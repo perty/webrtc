@@ -1,11 +1,4 @@
-/***
- * Excerpted from "Programming WebRTC",
- * published by The Pragmatic Bookshelf.
- * Copyrights apply to this code. It may not be used to create training material,
- * courses, books, articles, and the like. Contact us if you are in doubt.
- * We make no guarantees that this code is fit for any purpose.
- * Visit http://www.pragmaticprogrammer.com/titles/ksrtc for more book information.
-***/
+
 'use strict';
 
 /**
@@ -31,7 +24,8 @@
 /**
  *  User-Interface Setup
  */
-
+document.querySelector('#call-button')
+    .addEventListener('click', handleCallButton)
 
 
 /**
@@ -44,6 +38,18 @@
  *  User-Interface Functions and Callbacks
  */
 
+function handleCallButton(event) {
+    const callButton = event.target;
+    if (callButton.className === 'join') {
+        console.log('Joining call');
+        callButton.className = 'leave';
+        callButton.innerText = 'Leave Call';
+    } else {
+        console.log('Leaving call');
+        callButton.className = 'join';
+        callButton.innerText = 'Join Call';
+    }
+}
 
 
 /**
