@@ -5,13 +5,16 @@
  *  Global Variables: Configuration, $peer, and $self
  */
 
-const namespace = prepareNamespace(window.location.hash, true);
 
 
 /**
  *  Signaling-Channel Setup
  */
+const namespace = prepareNamespace(window.location.hash, true);
 
+const sc = io.connect('/' + namespace, { autoConnect: false });
+
+registerScCallbacks();
 
 
 /**
@@ -47,11 +50,21 @@ function handleCallButton(event) {
         console.log('Joining call');
         callButton.className = 'leave';
         callButton.innerText = 'Leave Call';
+        joinCall();
     } else {
         console.log('Leaving call');
         callButton.className = 'join';
         callButton.innerText = 'Join Call';
+        leaveCall();
     }
+}
+
+function joinCall() {
+    sc.open();
+}
+
+function leaveCall() {
+    sc.close();
 }
 
 
@@ -91,6 +104,29 @@ function handleCallButton(event) {
  *  Signaling-Channel Functions and Callbacks
  */
 
+
+function registerScCallbacks() {
+    sc.on('connect', handleScConnect);
+    sc.on('connected peer', handleScConnectedPeer);
+    sc.on('disconnected peer', handleScDisconnectedPeer);
+    sc.on('signal', handleScSignal);
+}
+
+function handleScConnect() {
+    console.log('Successfully connected to the signaling server!');
+}
+
+function handleScConnectedPeer() {
+
+}
+
+function handleScDisconnectedPeer() {
+
+}
+
+async function handleScSignal({ candidate, description }) {
+
+}
 
 
 /**
