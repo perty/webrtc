@@ -74,6 +74,7 @@ function joinCall() {
 
 function leaveCall() {
   sc.close();
+  resetCall($peer);
 }
 
 /**
@@ -98,6 +99,12 @@ function displayStream(video_id, stream) {
 function establishCallFeatures(peer) {
   registerRtcCallbacks(peer.connection);
   addTracksToConnection(peer.connection, $self.media);
+}
+
+function resetCall(peer) {
+  displayStream("#peer", null);
+  peer.connection.close();
+  peer.connection = new RTCPeerConnection(rtc_config);
 }
 
 /**
@@ -165,7 +172,10 @@ function handleScConnectedPeer() {
   $self.isPolite = true;
 }
 
-function handleScDisconnectedPeer() {}
+function handleScDisconnectedPeer() {
+  resetCall($peer);
+  establishCallFeatures($peer);
+}
 
 async function handleScSignal({ candidate, description }) {
   if (description) {
