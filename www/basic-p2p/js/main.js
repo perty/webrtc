@@ -4,7 +4,17 @@
  *  Global Variables: Configuration, $peer, and $self
  */
 
+const rtc_config = null;
+
+const $peer = {
+  connection: new RTCPeerConnection(rtc_config),
+};
+
 const $self = {
+  isPolite: false,
+  isMakingOffer: false,
+  isIgnoringOffer: false,
+  isSettingRemoteAnswerPending: false,
   mediaConstraints: { audio: false, video: true },
 };
 
@@ -88,6 +98,15 @@ function displayStream(video_id, stream) {
 /**
  *  WebRTC Functions and Callbacks
  */
+function registerRtcCallbacks(pc) {
+  pc.onnegotiationneeded = handleRtcConnectionNegotiation;
+  pc.onicecandidate = handleRtcIceCandidate;
+  pc.ontrack = handleRtcPeerTrack;
+}
+
+function handleRtcPeerTrack() {
+  // TODO handle peer media tracks
+}
 
 /**
  * =========================================================================
@@ -98,6 +117,27 @@ function displayStream(video_id, stream) {
 /**
  *  Reusable WebRTC Functions and Callbacks
  */
+
+async function handleRtcConnectionNegotiation() {
+  $self.isMakingOffer = true;
+  console.log("Attempting an offer");
+  await $peer.connection.setLocalDescription();
+  sc.emit("signal", { description: $peer.connection.localDescription });
+  $self.isMakingOffer = false;
+}
+
+function handleRtcIceCandidate({ candidate }) {
+  console.log("Attempting to handle ICE candidate");
+  sc.emit("signal", { candidate: candidate });
+}
+
+function addTracksToConnection(pc, media) {
+  if (media) {
+    for (let track of media.getTracks()) {
+      pc.addTrack(track, media);
+    }
+  }
+}
 
 /**
  *  Signaling-Channel Functions and Callbacks
@@ -114,7 +154,9 @@ function handleScConnect() {
   console.log("Successfully connected to the signaling server!");
 }
 
-function handleScConnectedPeer() {}
+function handleScConnectedPeer() {
+  $self.isPolite = true;
+}
 
 function handleScDisconnectedPeer() {}
 
