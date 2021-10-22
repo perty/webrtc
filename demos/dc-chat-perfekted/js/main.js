@@ -9,21 +9,20 @@
 'use strict';
 
 /**
- *  Global Variables: Configuration, $peer, and $self
+ *  Global Variables: $self and $peer
  */
 
-const rtc_config = null;
-
-const $peer = {
-  connection: new RTCPeerConnection(rtc_config)
-};
-
 const $self = {
+  rtcConfig: null,
   isPolite: false,
   isMakingOffer: false,
   isIgnoringOffer: false,
   isSettingRemoteAnswerPending: false,
   mediaConstraints: { audio: false, video: true }
+};
+
+const $peer = {
+  connection: new RTCPeerConnection($self.rtcConfig)
 };
 
 
@@ -124,14 +123,14 @@ function leaveCall() {
   resetCall($peer);
 }
 
-function handleSelfVideo(e) {
+function handleSelfVideo(event) {
   if ($peer.connection.connectionState !== 'connected') return;
   const filter = `filter-${$self.filters.cycleFilter()}`;
   const fdc = $peer.connection.createDataChannel(filter);
   fdc.onclose = function() {
     console.log(`Remote peer has closed the ${filter} data channel`);
   };
-  e.target.className = filter;
+  event.target.className = filter;
 }
 
 function handleMessageForm(event) {
@@ -188,14 +187,14 @@ async function requestUserMedia(media_constraints) {
   displayStream('#self', $self.stream);
 }
 
-function displayStream(video_id, stream) {
-  document.querySelector(video_id).srcObject = stream;
+function displayStream(selector, stream) {
+  document.querySelector(selector).srcObject = stream;
 }
 
-function addTracksToConnection(pc, media) {
-  if (media) {
-    for (let track of media.getTracks()) {
-      pc.addTrack(track, media);
+function addStreamingMedia(peer, stream) {
+  if (stream) {
+    for (let track of stream.getTracks()) {
+      peer.connection.addTrack(track, stream);
     }
   }
 }
@@ -204,13 +203,13 @@ function addChatChannel(peer) {
   peer.chatChannel =
     peer.connection.createDataChannel('text chat',
       { negotiated: true, id: 50 });
-  peer.chatChannel.onmessage = function(e) {
-    appendMessage('peer', '#chat-log', e.data);
+  peer.chatChannel.onmessage = function(event) {
+    appendMessage('peer', '#chat-log', event.data);
   };
-  peer.chatChannel.onclose = function(e) {
+  peer.chatChannel.onclose = function(event) {
     console.log('Chat channel closed.');
   };
-  peer.chatChannel.onopen = function(e) {
+  peer.chatChannel.onopen = function(event) {
     console.log('Chat channel opened.');
     for (let message of $self.messageQueue) {
       console.log('Sending a message from the queque');
@@ -226,15 +225,15 @@ function addChatChannel(peer) {
  */
 
 function establishCallFeatures(peer) {
-  registerRtcCallbacks(peer.connection);
+  registerRtcCallbacks(peer);
   addChatChannel(peer);
-  addTracksToConnection(peer.connection, $self.media);
+  addStreamingMedia(peer, $self.stream);
 }
 
 function resetCall(peer) {
   displayStream('#peer', null);
   peer.connection.close();
-  peer.connection = new RTCPeerConnection(rtc_config);
+  peer.connection = new RTCPeerConnection($self.rtcConfig);
 }
 
 
@@ -243,16 +242,16 @@ function resetCall(peer) {
  *  WebRTC Functions and Callbacks
  */
 
-function registerRtcCallbacks(pc) {
-  pc.onconnectionstatechange = handleRtcConnectionStateChange;
-  pc.ondatachannel = handleRtcDataChannel;
-  pc.onnegotiationneeded = handleRtcConnectionNegotiation;
-  pc.onicecandidate = handleRtcIceCandidate;
-  pc.ontrack = handleRtcPeerTrack;
+function registerRtcCallbacks(peer) {
+  peer.connection.onconnectionstatechange = handleRtcConnectionStateChange;
+  peer.connection.ondatachannel = handleRtcDataChannel;
+  peer.connection.onnegotiationneeded = handleRtcConnectionNegotiation;
+  peer.connection.onicecandidate = handleRtcIceCandidate;
+  peer.connection.ontrack = handleRtcPeerTrack;
 }
 
 function handleRtcPeerTrack({ track, streams: [stream] }) {
-  console.log('Attempt to add media for peer...');
+  console.log('Attempt to display media from peer...');
   displayStream('#peer', stream);
 }
 
@@ -286,7 +285,7 @@ async function handleRtcConnectionNegotiation() {
   try {
     $self.isMakingOffer = true;
     await $peer.connection.setLocalDescription();
-  } catch {
+  } catch(e) {
     const offer = await $peer.connection.createOffer();
     await $peer.connection.setLocalDescription(offer);
   } finally {
@@ -335,7 +334,7 @@ function handleScDisconnectedPeer() {
 }
 
 function resetAndRetryConnection(peer) {
-  // Reset all initial $self state-properties
+  // Reset all initial $self state-properties except isPolite
   $self.isMakingOffer = false;
   $self.isIgnoringOffer = false;
   $self.isSettingRemoteAnswerPending = false;
@@ -351,7 +350,7 @@ function resetAndRetryConnection(peer) {
   }
 }
 
-async function handleScSignal({ candidate, description }) {
+async function handleScSignal({ description, candidate }) {
   if (description) {
 
     // Snip, snip
@@ -380,7 +379,7 @@ async function handleScSignal({ candidate, description }) {
       console.log('Signaling state on incoming description:',
         $peer.connection.signalingState);
       await $peer.connection.setRemoteDescription(description);
-    } catch {
+    } catch(e) {
       resetAndRetryConnection($peer);
       return;
     }
@@ -389,7 +388,7 @@ async function handleScSignal({ candidate, description }) {
     if (description.type === 'offer') {
       try {
         await $peer.connection.setLocalDescription();
-      } catch {
+      } catch(e) {
         const answer = await $peer.connection.createAnswer();
         await $peer.connection.setLocalDescription(answer);
       } finally {
@@ -399,13 +398,19 @@ async function handleScSignal({ candidate, description }) {
       }
     }
   } else if (candidate) {
-    // Ignore empty ICE candidates
-    if (candidate.candidate.length > 1) {
+    // Handle ICE candidates
+    try {
       await $peer.connection.addIceCandidate(candidate);
+    } catch(e) {
+      // Log error unless $self is ignoring offers
+      // and candidate is not an empty string
+      if (!$self.isIgnoringOffer && candidate.candidate.length > 1) {
+        console.error('Unable to add ICE candidate for peer:', e);
+      }
     }
   }
 
-  // Snip, snip
+    // Snip, snip
 
 }
 

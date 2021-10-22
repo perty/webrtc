@@ -62,34 +62,29 @@ button {
 }
 
 /* Video Elements */
-
+#videos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, max-content));
+  gap: 11px;
+}
 video {
   background-color: #DDD;
   display: block;
   max-width: 100%;
 }
-#self {
-  width: 50%;
-  max-width: 320px;
-  margin-bottom: 11px;
+figure {
+  position: relative;
 }
-.connected #self {
-  cursor: pointer;
-}
-
-/*  Video Effects */
-
-.filter-grayscale {
-  filter: grayscale(100%);
-}
-.filter-sepia {
-  filter: sepia(100%);
-}
-.filter-noir {
-  filter: grayscale(100%) contrast(300%) brightness(60%);
-}
-.filter-psychedelic {
-  filter: hue-rotate(180deg) saturate(400%) contrast(200%);
+figcaption {
+  font-weight: normal;
+  font-size: 12px;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 5.5px;
+  color: #EEE;
+  background: rgba(16,16,16,0.6);
 }
 
 /* Media Queries */

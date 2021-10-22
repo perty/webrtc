@@ -9,16 +9,11 @@
 'use strict';
 
 /**
- *  Global Variables: Configuration, $peer, and $self
+ *  Global Variables: $self and $peer
  */
 
-const rtc_config = null;
-
-const $peer = {
-  connection: new RTCPeerConnection(rtc_config)
-};
-
 const $self = {
+  rtcConfig: null,
   isPolite: false,
   isMakingOffer: false,
   isIgnoringOffer: false,
@@ -26,6 +21,9 @@ const $self = {
   mediaConstraints: { audio: false, video: true }
 };
 
+const $peer = {
+  connection: new RTCPeerConnection($self.rtcConfig)
+};
 
 /**
  *  Signaling-Channel Setup
@@ -105,14 +103,14 @@ async function requestUserMedia(media_constraints) {
   displayStream('#self', $self.stream);
 }
 
-function displayStream(video_id, stream) {
-  document.querySelector(video_id).srcObject = stream;
+function displayStream(selector, stream) {
+  document.querySelector(selector).srcObject = stream;
 }
 
-function addTracksToConnection(pc, media) {
-  if (media) {
-    for (let track of media.getTracks()) {
-      pc.addTrack(track, media);
+function addStreamingMedia(peer, stream) {
+  if (stream) {
+    for (let track of stream.getTracks()) {
+      peer.connection.addTrack(track, stream);
     }
   }
 }
@@ -122,14 +120,14 @@ function addTracksToConnection(pc, media) {
  */
 
 function establishCallFeatures(peer) {
-  registerRtcCallbacks(peer.connection);
-  addTracksToConnection(peer.connection, $self.media);
+  registerRtcCallbacks(peer);
+  addStreamingMedia(peer, $self.stream);
 }
 
 function resetCall(peer) {
   displayStream('#peer', null);
   peer.connection.close();
-  peer.connection = new RTCPeerConnection(rtc_config);
+  peer.connection = new RTCPeerConnection($self.rtcConfig);
 }
 
 
@@ -137,14 +135,14 @@ function resetCall(peer) {
  *  WebRTC Functions and Callbacks
  */
 
-function registerRtcCallbacks(pc) {
-  pc.onnegotiationneeded = handleRtcConnectionNegotiation;
-  pc.onicecandidate = handleRtcIceCandidate;
-  pc.ontrack = handleRtcPeerTrack;
+function registerRtcCallbacks(peer) {
+  peer.connection.onnegotiationneeded = handleRtcConnectionNegotiation;
+  peer.connection.onicecandidate = handleRtcIceCandidate;
+  peer.connection.ontrack = handleRtcPeerTrack;
 }
 
 function handleRtcPeerTrack({ track, streams: [stream] }) {
-  console.log('Attempt to add media for peer...');
+  console.log('Attempt to display media from peer...');
   displayStream('#peer', stream);
 }
 
@@ -201,7 +199,7 @@ function handleScDisconnectedPeer() {
   establishCallFeatures($peer);
 }
 
-async function handleScSignal({ candidate, description }) {
+async function handleScSignal({ description, candidate }) {
   if (description) {
 
     const readyForOffer =
@@ -227,10 +225,17 @@ async function handleScSignal({ candidate, description }) {
     }
   } else if (candidate) {
 
-    // Ignore empty ICE candidates
-    if (candidate.candidate.length > 1) {
+    // Handle ICE candidates
+    try {
       await $peer.connection.addIceCandidate(candidate);
+    } catch(e) {
+      // Log error unless $self is ignoring offers
+      // and candidate is not an empty string
+      if (!$self.isIgnoringOffer && candidate.candidate.length > 1) {
+        console.error('Unable to add ICE candidate for peer:', e);
+      }
     }
+
   }
 }
 

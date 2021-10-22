@@ -9,7 +9,7 @@
 -->
 <html lang="en">
 <head>
-  <title>WebRTC Demo: DataChannel-Powered Video Filters</title>
+  <title>WebRTC Demo: Multipeer Video Call</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0,shrink-to-fit=no" />
   <link rel="stylesheet" href="css/screen.css" />
@@ -20,20 +20,18 @@
     <h1>Welcome</h1>
     <button class="join" type="button" id="call-button">Join Call</button>
   </header>
-  <article id="videos">
-    <h2 class="preserve-access">Streaming Videos</h2>
-    <video id="self"
+<article id="videos">
+  <h2 class="preserve-access">Streaming Videos</h2>
+  <figure id="self">
+    <video
       autoplay
       muted
       playsinline
       poster="img/placeholder.png">
     </video>
-    <video id="peer"
-      autoplay
-      playsinline
-      poster="img/placeholder.png">
-    </video>
-  </article>
+    <figcaption>You</figcaption>
+  </figure>
+</article>
 </main>
 <script src="/socket.io/socket.io.js"></script>
 <script
