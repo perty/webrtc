@@ -30,7 +30,7 @@
     "eslint": "^7.25.0",
     "geckodriver": "^1.22.3",
     "htmllint-cli": "^0.0.7",
-    "nightwatch": "^1.6.3",
+    "nightwatch": "^1.7.13",
     "prettier": "^2.4.1",
     "stylelint": "^13.13.1"
   }
