@@ -20,7 +20,7 @@
     "test:nw:ff": "npx nightwatch -c scripts/conf/nightwatch.conf.js -e chromeOne,firefox"
   },
   "dependencies": {
-    "express": "~4.16",
+    "express": "~4.18",
     "http-errors": "~1.6",
     "morgan": "~1.9",
     "socket.io": "~4.1"
